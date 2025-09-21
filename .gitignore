@@ -179,6 +179,7 @@ output/
 exports/
 
 # Development tools
+.claude/
 .coverage
 .pytest_cache/
 .ruff_cache/
