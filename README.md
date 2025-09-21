@@ -19,7 +19,15 @@ A FastAPI-based service that provides access to global conflict forecasts with u
 -   Python 3.9+ (tested with Python 3.13)
 -   Windows, macOS, or Linux
 
-### Installation
+### Instant Setup
+
+```bash
+pip install -r requirements-dev.txt
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+# Visit http://localhost:8000
+```
+
+### Installation - Second Method
 
 1. **Clone or download the project files**
 2. **Set up the environment:**
@@ -37,7 +45,7 @@ source venv/bin/activate
 # Install dependencies
 make install-dev
 # Or manually:
-pip install -r requirements-dev.txt
+pip install -r requirements.txt
 ```
 
 3. **Initialize the project:**
