@@ -389,8 +389,8 @@ async def debug_files():
         expected_files = [
             "data/fatalities002_2025_07_t01_pgm.csv",
             "data/fatalities002_2025_07_t01_cm.csv", 
-            "data/sample_preds_001_90.csv",
-            "data/sample_preds_001.csv"
+            "data/sample_preds_001_90.csv.gz",
+            "data/sample_preds_001.csv.gz"
         ]
         
         for file_path in expected_files:

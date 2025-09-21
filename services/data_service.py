@@ -20,8 +20,8 @@ class DataPaths:
     """Configuration for data file paths."""
     pgm_data: str = "data/fatalities002_2025_07_t01_pgm.csv"
     country_data: str = "data/fatalities002_2025_07_t01_cm.csv"
-    hdi_data: str = "data/sample_preds_001_90.csv"
-    timeseries_data: str = "data/sample_preds_001.csv"
+    hdi_data: str = "data/sample_preds_001_90.csv.gz"
+    timeseries_data: str = "data/sample_preds_001.csv.gz"
 
 
 class DataService:
@@ -95,56 +95,74 @@ class DataService:
         else:
             try:
                 # Try to parse the actual timeseries file
-                # Your format has arrays in columns, so we need special handling
-                with open(self.data_paths.timeseries_data, 'r') as f:
-                    first_line = f.readline()
-                
-                # Check if it's the array format you showed
-                if '[' in first_line and ']' in first_line:
-                    # This is the complex array format - extract just the metadata
-                    data = []
-                    with open(self.data_paths.timeseries_data, 'r') as f:
-                        lines = f.readlines()
-                        
-                    # Skip header if present
-                    start_idx = 1 if 'pred_ln_sb_best' in lines[0] else 0
-                    
-                    for line in lines[start_idx:]:
-                        parts = line.strip().split(',')
-                        if len(parts) >= 10:  # Ensure we have enough columns
-                            try:
-                                # Extract the metadata columns (country_id, lat, lon, row, col, month_id, priogrid_id)
-                                # Based on your format: ..., country_id, lat, lon, row, col, month_id, priogrid_id
-                                country_id = int(parts[-7])
-                                lat = float(parts[-6])
-                                lon = float(parts[-5])
-                                row = int(parts[-4])
-                                col = int(parts[-3])
-                                month_id = int(parts[-2])
-                                priogrid_id = int(parts[-1])
-                                
-                                data.append({
-                                    'priogrid_id': priogrid_id,
-                                    'latitude': lat,
-                                    'longitude': lon,
-                                    'country_id': country_id,
-                                    'row': row,
-                                    'col': col,
-                                    'month_id': month_id
-                                })
-                            except (ValueError, IndexError) as e:
-                                logger.warning(f"Skipping malformed line: {e}")
-                                continue
-                    
-                    self.timeseries_data = pd.DataFrame(data)
-                    logger.info(f"Parsed timeseries data: {len(self.timeseries_data)} records")
-                else:
-                    # Standard CSV format
-                    self.timeseries_data = pd.read_csv(self.data_paths.timeseries_data)
-                    
-            except Exception as e:
-                logger.warning(f"Failed to load timeseries data: {e}, creating synthetic data")
-                self._create_synthetic_timeseries_data()
+                # First try reading as standard CSV (pandas handles .gz automatically)
+                self.timeseries_data = pd.read_csv(self.data_paths.timeseries_data)
+                logger.info(f"Loaded timeseries data as standard CSV: {len(self.timeseries_data)} records")
+            except Exception as csv_error:
+                logger.warning(f"Failed to load as standard CSV: {csv_error}")
+                try:
+                    # Fallback: Try special handling for complex array format
+                    import gzip
+
+                    # Open gzipped file properly
+                    if self.data_paths.timeseries_data.endswith('.gz'):
+                        with gzip.open(self.data_paths.timeseries_data, 'rt', encoding='utf-8') as f:
+                            first_line = f.readline()
+                    else:
+                        with open(self.data_paths.timeseries_data, 'r', encoding='utf-8') as f:
+                            first_line = f.readline()
+
+                    # Check if it's the array format you showed
+                    if '[' in first_line and ']' in first_line:
+                        # This is the complex array format - extract just the metadata
+                        data = []
+
+                        if self.data_paths.timeseries_data.endswith('.gz'):
+                            with gzip.open(self.data_paths.timeseries_data, 'rt', encoding='utf-8') as f:
+                                lines = f.readlines()
+                        else:
+                            with open(self.data_paths.timeseries_data, 'r', encoding='utf-8') as f:
+                                lines = f.readlines()
+
+                        # Skip header if present
+                        start_idx = 1 if 'pred_ln_sb_best' in lines[0] else 0
+
+                        for line in lines[start_idx:]:
+                            parts = line.strip().split(',')
+                            if len(parts) >= 10:  # Ensure we have enough columns
+                                try:
+                                    # Extract the metadata columns (country_id, lat, lon, row, col, month_id, priogrid_id)
+                                    # Based on your format: ..., country_id, lat, lon, row, col, month_id, priogrid_id
+                                    country_id = int(parts[-7])
+                                    lat = float(parts[-6])
+                                    lon = float(parts[-5])
+                                    row = int(parts[-4])
+                                    col = int(parts[-3])
+                                    month_id = int(parts[-2])
+                                    priogrid_id = int(parts[-1])
+
+                                    data.append({
+                                        'priogrid_id': priogrid_id,
+                                        'latitude': lat,
+                                        'longitude': lon,
+                                        'country_id': country_id,
+                                        'row': row,
+                                        'col': col,
+                                        'month_id': month_id
+                                    })
+                                except (ValueError, IndexError) as e:
+                                    logger.warning(f"Skipping malformed line: {e}")
+                                    continue
+
+                        self.timeseries_data = pd.DataFrame(data)
+                        logger.info(f"Parsed timeseries data: {len(self.timeseries_data)} records")
+                    else:
+                        # Standard CSV format - try pandas read_csv again with explicit encoding
+                        self.timeseries_data = pd.read_csv(self.data_paths.timeseries_data, encoding='utf-8')
+
+                except Exception as e:
+                    logger.warning(f"Failed to load timeseries data: {e}, creating synthetic data")
+                    self._create_synthetic_timeseries_data()
         
         # If we have no coordinate data, create synthetic coordinates for the grid cells we do have
         if self.timeseries_data is None or self.timeseries_data.empty:

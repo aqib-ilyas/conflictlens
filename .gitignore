@@ -144,20 +144,13 @@ dmypy.json
 ehthumbs.db
 Thumbs.db
 
-# Project specific
-data/
-*.csv
-*.parquet
-*.h5
-*.hdf5
-*.pkl
-*.pickle
-
 # Logs
 logs/
 *.log
 
 # Temporary files
+data/sample_preds_001.csv
+data/sample_preds_001_90.csv
 tmp/
 temp/
 .tmp/
