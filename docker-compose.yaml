@@ -1,0 +1,26 @@
+# docker-compose.yml
+version: "3.8"
+
+services:
+    views-api:
+        build: .
+        ports:
+            - "8000:8000"
+        volumes:
+            - ./data:/app/data
+            - ./logs:/app/logs
+        environment:
+            - PYTHONPATH=/app
+            - LOG_LEVEL=INFO
+        healthcheck:
+            test:
+                [
+                    "CMD",
+                    "python",
+                    "-c",
+                    "import requests; requests.get('http://localhost:8000/api/info')",
+                ]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s

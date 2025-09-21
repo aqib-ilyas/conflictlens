@@ -1,0 +1,43 @@
+# .ruff.toml - Standalone Ruff configuration (alternative to pyproject.toml)
+target-version = "py39"
+line-length = 88
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings  
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "N",  # pep8-naming
+    "S",  # flake8-bandit
+    "T20", # flake8-print
+    "PT", # flake8-pytest-style
+]
+
+ignore = [
+    "E501",  # line too long
+    "B008",  # do not perform function calls in argument defaults
+    "S101",  # use of assert detected (allow in tests)
+    "T201",  # print found (allow for debugging)
+    "PT004", # fixture does not return anything
+]
+
+[per-file-ignores]
+"tests/*" = ["S101", "T201", "PT"]
+"main.py" = ["T201"]
+
+[isort]
+known-first-party = ["models", "services", "utils"]
+force-single-line = false
+force-sort-within-sections = true
+single-line-exclusions = ["typing"]
+
+[mccabe]
+max-complexity = 10
+
+[flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[flake8-type-checking]
+strict = true

@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ConflictLens - VIEWS Conflict Forecasting Platform</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+        <script>
+            // Fallback for Chart.js loading
+            window.addEventListener("load", function () {
+                if (typeof Chart === "undefined") {
+                    console.log("Loading Chart.js fallback...");
+                    const script = document.createElement("script");
+                    script.src =
+                        "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js";
+                    script.onload = function () {
+                        console.log("Chart.js fallback loaded");
+                        if (
+                            window.initializeChart &&
+                            typeof window.initializeChart === "function"
+                        ) {
+                            window.initializeChart();
+                        }
+                    };
+                    script.onerror = function () {
+                        console.error("Chart.js fallback failed to load");
+                    };
+                    document.head.appendChild(script);
+                }
+            });
+        </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+        />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+            rel="stylesheet"
+        />
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                    Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                background-color: #f8fafc;
+                color: #334155;
+                line-height: 1.6;
+            }
+
+            .app-container {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Header */
+            .header {
+                background: white;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 0 24px;
+                height: 64px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: sticky;
+                top: 0;
+                z-index: 100;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            }
+
+            .logo {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                font-weight: 700;
+                font-size: 20px;
+                color: #1e293b;
+            }
+
+            .logo i {
+                background: #4f46e5;
+                color: white;
+                padding: 8px;
+                border-radius: 8px;
+                font-size: 16px;
+            }
+
+            .status-badge {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                background: #f0fdf4;
+                color: #166534;
+                padding: 6px 12px;
+                border-radius: 20px;
+                font-size: 14px;
+                font-weight: 500;
+                border: 1px solid #bbf7d0;
+            }
+
+            .status-dot {
+                width: 8px;
+                height: 8px;
+                background: #22c55e;
+                border-radius: 50%;
+            }
+
+            /* Main Content */
+            .main-content {
+                flex: 1;
+                padding: 24px;
+                max-width: 1400px;
+                margin: 0 auto;
+                width: 100%;
+            }
+
+            /* Control Panel */
+            .control-panel {
+                background: white;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                padding: 24px;
+                margin-bottom: 24px;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            }
+
+            .panel-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 20px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid #f1f5f9;
+            }
+
+            .panel-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #1e293b;
+            }
+
+            .panel-icon {
+                background: #4f46e5;
+                color: white;
+                padding: 6px;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+
+            .form-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+
+            .form-group {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .form-label {
+                font-size: 14px;
+                font-weight: 500;
+                color: #374151;
+                margin-bottom: 6px;
+            }
+
+            .form-input,
+            .form-select {
+                background: white;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                padding: 10px 12px;
+                font-size: 14px;
+                transition: all 0.2s ease;
+                appearance: none;
+            }
+
+            .form-input:focus,
+            .form-select:focus {
+                outline: none;
+                border-color: #4f46e5;
+                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            }
+
+            .form-select {
+                background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+                background-position: right 8px center;
+                background-repeat: no-repeat;
+                background-size: 16px;
+                padding-right: 32px;
+            }
+
+            .checkbox-group {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+                margin-top: 16px;
+            }
+
+            .checkbox-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .checkbox {
+                width: 16px;
+                height: 16px;
+                accent-color: #4f46e5;
+            }
+
+            .checkbox-label {
+                font-size: 14px;
+                color: #374151;
+                font-weight: 500;
+            }
+
+            .execute-btn {
+                background: #4f46e5;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 12px 24px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                justify-self: start;
+            }
+
+            .execute-btn:hover {
+                background: #4338ca;
+                transform: translateY(-1px);
+            }
+
+            .execute-btn:disabled {
+                background: #9ca3af;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            /* Dashboard Grid */
+            .dashboard-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+                margin-bottom: 24px;
+            }
+
+            @media (max-width: 1024px) {
+                .dashboard-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            .dashboard-card {
+                background: white;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                overflow: hidden;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            }
+
+            .card-header {
+                padding: 20px 24px 16px;
+                border-bottom: 1px solid #f1f5f9;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .card-title {
+                font-size: 16px;
+                font-weight: 600;
+                color: #1e293b;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .card-icon {
+                color: #4f46e5;
+                font-size: 18px;
+            }
+
+            .card-content {
+                padding: 0;
+                height: 400px;
+            }
+
+            #map {
+                height: 100%;
+                width: 100%;
+            }
+
+            .chart-container {
+                height: 100%;
+                width: 100%;
+                padding: 20px;
+                position: relative;
+            }
+
+            /* Results Section */
+            .results-section {
+                background: white;
+                border-radius: 12px;
+                border: 1px solid #e2e8f0;
+                overflow: hidden;
+                box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+            }
+
+            .results-header {
+                background: #f8fafc;
+                padding: 20px 24px;
+                border-bottom: 1px solid #e2e8f0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .results-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #1e293b;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 1px;
+                background: #e2e8f0;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+
+            .stat-item {
+                background: white;
+                padding: 16px;
+                text-align: center;
+            }
+
+            .stat-value {
+                font-size: 24px;
+                font-weight: 700;
+                color: #4f46e5;
+                margin-bottom: 4px;
+            }
+
+            .stat-label {
+                font-size: 12px;
+                color: #64748b;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+
+            .results-table-container {
+                overflow-x: auto;
+            }
+
+            .results-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+
+            .results-table th {
+                background: #f8fafc;
+                padding: 12px 16px;
+                text-align: left;
+                font-size: 12px;
+                font-weight: 600;
+                color: #475569;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                border-bottom: 1px solid #e2e8f0;
+            }
+
+            .results-table td {
+                padding: 12px 16px;
+                border-bottom: 1px solid #f1f5f9;
+                font-size: 14px;
+            }
+
+            .results-table tr:hover {
+                background: #f8fafc;
+            }
+
+            .risk-badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .risk-high {
+                background: #fef2f2;
+                color: #dc2626;
+            }
+
+            .risk-medium {
+                background: #fef3c7;
+                color: #d97706;
+            }
+
+            .risk-low {
+                background: #f0fdf4;
+                color: #16a34a;
+            }
+
+            .coord-text {
+                font-family: "Monaco", "Menlo", monospace;
+                font-size: 12px;
+                color: #64748b;
+            }
+
+            /* Loading and Messages */
+            .loading-state {
+                padding: 40px;
+                text-align: center;
+                color: #64748b;
+            }
+
+            .loading-spinner {
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                border: 2px solid #e2e8f0;
+                border-radius: 50%;
+                border-top-color: #4f46e5;
+                animation: spin 1s ease-in-out infinite;
+                margin-right: 8px;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .alert {
+                padding: 16px;
+                border-radius: 8px;
+                margin: 16px 0;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .alert-error {
+                background: #fef2f2;
+                color: #dc2626;
+                border: 1px solid #fecaca;
+            }
+
+            .alert-success {
+                background: #f0fdf4;
+                color: #16a34a;
+                border: 1px solid #bbf7d0;
+            }
+
+            .alert-warning {
+                background: #fefce8;
+                color: #ca8a04;
+                border: 1px solid #fde047;
+            }
+
+            /* Empty States */
+            .empty-state {
+                padding: 60px 20px;
+                text-align: center;
+                color: #64748b;
+            }
+
+            .empty-icon {
+                font-size: 48px;
+                color: #cbd5e1;
+                margin-bottom: 16px;
+            }
+
+            .empty-title {
+                font-size: 18px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                color: #475569;
+            }
+
+            .empty-description {
+                font-size: 14px;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+
+            /* Responsive Design */
+            @media (max-width: 768px) {
+                .main-content {
+                    padding: 16px;
+                }
+
+                .form-grid {
+                    grid-template-columns: 1fr;
+                }
+
+                .stats-grid {
+                    grid-template-columns: repeat(2, 1fr);
+                }
+
+                .header {
+                    padding: 0 16px;
+                }
+
+                .logo {
+                    font-size: 18px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="app-container">
+            <!-- Header -->
+            <header class="header">
+                <div class="logo">
+                    <i class="fas fa-globe-africa"></i>
+                    <span
+                        >ConflictLens - VIEWS Conflict Forecasting
+                        Platform</span
+                    >
+                </div>
+                <div class="status-badge" id="apiStatus">
+                    <div class="status-dot"></div>
+                    <span id="statusText">Checking...</span>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <!-- Control Panel -->
+                <section class="control-panel">
+                    <div class="panel-header">
+                        <i class="fas fa-sliders-h panel-icon"></i>
+                        <h2 class="panel-title">Query Parameters</h2>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label class="form-label" for="queryType"
+                                >Query Type</label
+                            >
+                            <select class="form-select" id="queryType">
+                                <option value="country">By Country</option>
+                                <option value="grid">By Grid IDs</option>
+                                <option value="month">By Month</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="countrySelect"
+                                >Country</label
+                            >
+                            <select class="form-select" id="countrySelect">
+                                <option value="">Loading countries...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="gridIds"
+                                >Grid IDs</label
+                            >
+                            <input
+                                type="text"
+                                class="form-input"
+                                id="gridIds"
+                                placeholder="e.g., 166084,166804,167525"
+                                disabled
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="monthStart"
+                                >Start Month</label
+                            >
+                            <select class="form-select" id="monthStart">
+                                <option value="">Loading months...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="monthEnd"
+                                >End Month</label
+                            >
+                            <select class="form-select" id="monthEnd">
+                                <option value="">Loading months...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="specificMonth"
+                                >Specific Month</label
+                            >
+                            <select
+                                class="form-select"
+                                id="specificMonth"
+                                disabled
+                            >
+                                <option value="">Loading months...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Metrics to Include</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    id="includeMap"
+                                    checked
+                                />
+                                <label class="checkbox-label" for="includeMap"
+                                    >MAP Values</label
+                                >
+                            </div>
+                            <div class="checkbox-item">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    id="includeHdi50"
+                                />
+                                <label class="checkbox-label" for="includeHdi50"
+                                    >50% HDI</label
+                                >
+                            </div>
+                            <div class="checkbox-item">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    id="includeHdi90"
+                                    checked
+                                />
+                                <label class="checkbox-label" for="includeHdi90"
+                                    >90% HDI</label
+                                >
+                            </div>
+                            <div class="checkbox-item">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    id="includeHdi99"
+                                />
+                                <label class="checkbox-label" for="includeHdi99"
+                                    >99% HDI</label
+                                >
+                            </div>
+                            <div class="checkbox-item">
+                                <input
+                                    type="checkbox"
+                                    class="checkbox"
+                                    id="includeThresholds"
+                                    checked
+                                />
+                                <label
+                                    class="checkbox-label"
+                                    for="includeThresholds"
+                                    >Thresholds</label
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <button
+                        class="execute-btn"
+                        onclick="executeQuery()"
+                        id="queryButton"
+                    >
+                        <i class="fas fa-play"></i>
+                        Execute Query
+                    </button>
+                </section>
+
+                <!-- Dashboard Grid -->
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-map-marked-alt card-icon"></i>
+                                Conflict Risk Map
+                            </h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="map"></div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-chart-line card-icon"></i>
+                                Forecast Trends
+                            </h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="chart-container">
+                                <canvas id="forecastChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <section
+                    class="results-section"
+                    id="resultsSection"
+                    style="display: none"
+                >
+                    <div class="results-header">
+                        <h3 class="results-title">
+                            <i class="fas fa-table"></i>
+                            Query Results
+                        </h3>
+                        <div class="stats-grid" id="statsGrid"></div>
+                    </div>
+                    <div class="results-table-container">
+                        <div id="resultsContent"></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <script>
+            // Global variables
+            let map;
+            let chart;
+            let apiBaseUrl = "/api";
+            let currentData = [];
+
+            // Initialize dashboard
+            document.addEventListener("DOMContentLoaded", function () {
+                // Check if Chart.js is loaded
+                if (typeof Chart === "undefined") {
+                    console.error("Chart.js not loaded. Retrying...");
+                    setTimeout(() => {
+                        if (typeof Chart !== "undefined") {
+                            console.log("Chart.js loaded successfully");
+                            initializeChart();
+                        } else {
+                            console.error(
+                                "Chart.js failed to load after retry"
+                            );
+                        }
+                    }, 1000);
+                } else {
+                    console.log("Chart.js loaded successfully");
+                    initializeChart();
+                }
+
+                initializeMap();
+                setupEventHandlers();
+
+                // Load API data with a small delay to ensure DOM is ready
+                setTimeout(loadAPIInfo, 100);
+            });
+
+            function setupEventHandlers() {
+                document
+                    .getElementById("queryType")
+                    .addEventListener("change", function () {
+                        const type = this.value;
+                        const gridInput = document.getElementById("gridIds");
+                        const countrySelect =
+                            document.getElementById("countrySelect");
+                        const specificMonth =
+                            document.getElementById("specificMonth");
+
+                        gridInput.disabled = type !== "grid";
+                        countrySelect.disabled = type === "grid";
+                        specificMonth.disabled = type !== "month";
+                    });
+            }
+
+            async function checkAPIStatus() {
+                const statusElement = document.getElementById("statusText");
+
+                try {
+                    console.log(
+                        "Checking API status at:",
+                        `${apiBaseUrl}/info`
+                    );
+                    const response = await fetch(`${apiBaseUrl}/info`);
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log("API response:", data);
+                        statusElement.textContent = "API Online";
+                        return true;
+                    } else {
+                        throw new Error(
+                            `HTTP ${response.status}: ${response.statusText}`
+                        );
+                    }
+                } catch (error) {
+                    console.error("API status check failed:", error);
+                    statusElement.textContent = "API Offline";
+                    return false;
+                }
+            }
+
+            async function loadAPIInfo() {
+                try {
+                    // Check API status first
+                    await checkAPIStatus();
+
+                    // Load API info
+                    const response = await fetch(`${apiBaseUrl}/info`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+
+                    const data = await response.json();
+
+                    // Load countries and months in parallel and wait for both to complete
+                    const results = await Promise.allSettled([
+                        loadCountries(),
+                        loadMonths(data.available_months),
+                    ]);
+
+                    // Check if both operations completed successfully
+                    results.forEach((result, index) => {
+                        if (result.status === "rejected") {
+                            console.error(
+                                `Operation ${index} failed:`,
+                                result.reason
+                            );
+                        }
+                    });
+
+                    // Force update of all dropdowns to ensure they're populated
+                    await updateDropdownsFromAPI();
+                } catch (error) {
+                    console.error("Error loading API info:", error);
+
+                    // Fallback: try loading with default data
+                    try {
+                        await loadCountries();
+                        const defaultMonths = Array.from(
+                            { length: 36 },
+                            (_, i) => 548 + i
+                        );
+                        loadMonths(defaultMonths);
+                        await updateDropdownsFromAPI();
+                    } catch (fallbackError) {
+                        console.error(
+                            "Fallback loading failed:",
+                            fallbackError
+                        );
+                    }
+                }
+            }
+
+            async function updateDropdownsFromAPI() {
+                // Force refresh countries dropdown
+                try {
+                    const response = await fetch(`${apiBaseUrl}/countries`);
+                    if (response.ok) {
+                        const countries = await response.json();
+                        const countrySelect =
+                            document.getElementById("countrySelect");
+
+                        // Clear and repopulate
+                        countrySelect.innerHTML =
+                            '<option value="">Select a country...</option>';
+                        countries.forEach((country) => {
+                            const option = document.createElement("option");
+                            option.value = country.country_id;
+                            option.textContent = `${country.country} (${
+                                country.grid_cells_count || 0
+                            } cells)`;
+                            countrySelect.appendChild(option);
+                        });
+                    }
+                } catch (error) {
+                    console.error(
+                        "Failed to update countries dropdown:",
+                        error
+                    );
+                }
+
+                // Force refresh months dropdown
+                try {
+                    const response = await fetch(`${apiBaseUrl}/info`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        const months =
+                            data.available_months ||
+                            Array.from({ length: 36 }, (_, i) => 548 + i);
+
+                        const monthSelectors = [
+                            "monthStart",
+                            "monthEnd",
+                            "specificMonth",
+                        ];
+                        monthSelectors.forEach((selectorId) => {
+                            const select = document.getElementById(selectorId);
+                            select.innerHTML =
+                                '<option value="">Select month...</option>';
+
+                            months.forEach((month) => {
+                                const option = document.createElement("option");
+                                option.value = month;
+                                const year =
+                                    2025 + Math.floor((month - 548) / 12);
+                                const monthNum = ((month - 548) % 12) + 1;
+                                option.textContent = `${year}-${monthNum
+                                    .toString()
+                                    .padStart(2, "0")} (${month})`;
+                                select.appendChild(option);
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.error("Failed to update months dropdown:", error);
+                }
+            }
+
+            async function loadCountries() {
+                const countrySelect = document.getElementById("countrySelect");
+                console.log(
+                    "loadCountries() called, dropdown element:",
+                    countrySelect
+                );
+
+                try {
+                    console.log(
+                        "Fetching countries from:",
+                        `${apiBaseUrl}/countries`
+                    );
+                    const response = await fetch(`${apiBaseUrl}/countries`);
+
+                    if (!response.ok) {
+                        throw new Error(
+                            `HTTP ${response.status}: ${response.statusText}`
+                        );
+                    }
+
+                    const countries = await response.json();
+                    console.log("Countries response:", countries);
+                    console.log("Number of countries:", countries.length);
+
+                    // Clear and populate dropdown
+                    countrySelect.innerHTML = "";
+
+                    // Add default option
+                    const defaultOption = document.createElement("option");
+                    defaultOption.value = "";
+                    defaultOption.textContent = "Select a country...";
+                    countrySelect.appendChild(defaultOption);
+
+                    // Add country options
+                    countries.forEach((country, index) => {
+                        console.log(`Adding country ${index}:`, country);
+                        const option = document.createElement("option");
+                        option.value = country.country_id;
+                        option.textContent = `${country.country} (${
+                            country.grid_cells_count || 0
+                        } cells)`;
+                        countrySelect.appendChild(option);
+                    });
+
+                    console.log(
+                        "Country dropdown populated with",
+                        countrySelect.options.length,
+                        "options"
+                    );
+                } catch (error) {
+                    console.error("Error loading countries:", error);
+                    countrySelect.innerHTML =
+                        '<option value="">Error loading countries</option>';
+                    showError("Failed to load countries: " + error.message);
+                }
+            }
+
+            function loadMonths(months) {
+                console.log("Loading months:", months);
+                const monthStart = document.getElementById("monthStart");
+                const monthEnd = document.getElementById("monthEnd");
+                const specificMonth = document.getElementById("specificMonth");
+
+                const selects = [monthStart, monthEnd, specificMonth];
+
+                selects.forEach((select) => {
+                    select.innerHTML =
+                        '<option value="">Select month...</option>';
+                    months.forEach((month) => {
+                        const option = document.createElement("option");
+                        option.value = month;
+                        const year = 2025 + Math.floor((month - 548) / 12);
+                        const monthNum = ((month - 548) % 12) + 1;
+                        option.textContent = `${year}-${monthNum
+                            .toString()
+                            .padStart(2, "0")} (${month})`;
+                        select.appendChild(option);
+                    });
+                });
+
+                console.log("Month dropdowns populated");
+            }
+
+            // Test function to verify API endpoints
+            async function testAPIEndpoints() {
+                console.log("Testing API endpoints...");
+
+                try {
+                    // Test info endpoint
+                    const infoResponse = await fetch("/api/info");
+                    console.log("Info endpoint status:", infoResponse.status);
+                    if (infoResponse.ok) {
+                        const infoData = await infoResponse.json();
+                        console.log("Info data:", infoData);
+                    }
+
+                    // Test countries endpoint
+                    const countriesResponse = await fetch("/api/countries");
+                    console.log(
+                        "Countries endpoint status:",
+                        countriesResponse.status
+                    );
+                    if (countriesResponse.ok) {
+                        const countriesData = await countriesResponse.json();
+                        console.log(
+                            "Countries data length:",
+                            countriesData.length
+                        );
+                    }
+                } catch (error) {
+                    console.error("API test failed:", error);
+                }
+            }
+
+            // Auto-run test after a short delay
+            setTimeout(testAPIEndpoints, 1000);
+
+            async function executeQuery() {
+                const queryButton = document.getElementById("queryButton");
+                const resultsSection =
+                    document.getElementById("resultsSection");
+
+                queryButton.disabled = true;
+                queryButton.innerHTML =
+                    '<div class="loading-spinner"></div>Loading...';
+
+                try {
+                    const queryType =
+                        document.getElementById("queryType").value;
+                    let url = "";
+                    let params = new URLSearchParams();
+
+                    // Build metrics parameters
+                    if (document.getElementById("includeMap").checked)
+                        params.append("include_map", "true");
+                    if (document.getElementById("includeHdi50").checked)
+                        params.append("include_hdi_50", "true");
+                    if (document.getElementById("includeHdi90").checked)
+                        params.append("include_hdi_90", "true");
+                    if (document.getElementById("includeHdi99").checked)
+                        params.append("include_hdi_99", "true");
+                    if (document.getElementById("includeThresholds").checked)
+                        params.append("include_thresholds", "true");
+
+                    // Build query URL based on type
+                    if (queryType === "country") {
+                        const countryId =
+                            document.getElementById("countrySelect").value;
+                        if (!countryId) {
+                            showError("Please select a country");
+                            return;
+                        }
+                        url = `${apiBaseUrl}/forecasts/country/${countryId}`;
+
+                        const monthStart =
+                            document.getElementById("monthStart").value;
+                        const monthEnd =
+                            document.getElementById("monthEnd").value;
+                        if (monthStart)
+                            params.append("month_start", monthStart);
+                        if (monthEnd) params.append("month_end", monthEnd);
+                    } else if (queryType === "grid") {
+                        const gridIds =
+                            document.getElementById("gridIds").value;
+                        if (!gridIds) {
+                            showError("Please enter grid IDs");
+                            return;
+                        }
+                        url = `${apiBaseUrl}/forecasts/grid`;
+                        gridIds
+                            .split(",")
+                            .forEach((id) =>
+                                params.append("grid_ids", id.trim())
+                            );
+
+                        const monthStart =
+                            document.getElementById("monthStart").value;
+                        const monthEnd =
+                            document.getElementById("monthEnd").value;
+                        if (monthStart)
+                            params.append("month_start", monthStart);
+                        if (monthEnd) params.append("month_end", monthEnd);
+                    } else if (queryType === "month") {
+                        const monthId =
+                            document.getElementById("specificMonth").value;
+                        if (!monthId) {
+                            showError("Please select a month");
+                            return;
+                        }
+                        url = `${apiBaseUrl}/forecasts/month/${monthId}`;
+
+                        const countryId =
+                            document.getElementById("countrySelect").value;
+                        if (countryId) params.append("country_id", countryId);
+                    }
+
+                    // Execute query
+                    const response = await fetch(`${url}?${params}`);
+                    if (!response.ok) {
+                        throw new Error(
+                            `HTTP ${response.status}: ${response.statusText}`
+                        );
+                    }
+
+                    const data = await response.json();
+                    currentData = data.data;
+
+                    console.log("Query response received:", data);
+                    console.log("Current data set to:", currentData);
+
+                    // Force DOM update by ensuring elements exist before updating
+                    const resultsSection =
+                        document.getElementById("resultsSection");
+                    if (resultsSection) {
+                        resultsSection.style.display = "block";
+
+                        // Wait a frame for DOM to update display
+                        await new Promise((resolve) =>
+                            requestAnimationFrame(resolve)
+                        );
+
+                        displayResults(data);
+                        updateMap(data.data);
+                        updateChart(data.data);
+
+                        console.log("All dashboard components updated");
+                    } else {
+                        console.error("Results section not found in DOM");
+                    }
+                } catch (error) {
+                    console.error("Query error:", error);
+                    showError(`Query failed: ${error.message}`);
+                } finally {
+                    queryButton.disabled = false;
+                    queryButton.innerHTML =
+                        '<i class="fas fa-play"></i>Execute Query';
+                }
+            }
+
+            function displayResults(data) {
+                const statsGrid = document.getElementById("statsGrid");
+                const resultsContent =
+                    document.getElementById("resultsContent");
+
+                console.log("displayResults called with data:", data);
+
+                if (!data || !data.data || data.data.length === 0) {
+                    resultsContent.innerHTML =
+                        '<div class="empty-state"><div class="empty-icon"><i class="fas fa-search"></i></div><div class="empty-title">No Results Found</div><div class="empty-description">No data found for the selected criteria. Try adjusting your query parameters.</div></div>';
+                    return;
+                }
+
+                // Create summary stats
+                const maxRisk = Math.max(
+                    ...data.data.map((d) => d.main_mean || 0)
+                );
+                const avgRisk =
+                    data.data.reduce((sum, d) => sum + (d.main_mean || 0), 0) /
+                    data.data.length;
+
+                // Update stats grid with proper error handling
+                try {
+                    statsGrid.innerHTML = `
+                    <div class="stat-item">
+                        <div class="stat-value">${data.total_cells || 0}</div>
+                        <div class="stat-label">Grid Cells</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${
+                            data.months_covered || 0
+                        }</div>
+                        <div class="stat-label">Months</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${maxRisk.toFixed(2)}</div>
+                        <div class="stat-label">Max Risk</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">${avgRisk.toFixed(2)}</div>
+                        <div class="stat-label">Avg Risk</div>
+                    </div>
+                `;
+                    console.log("Stats grid updated successfully");
+                } catch (error) {
+                    console.error("Error updating stats grid:", error);
+                }
+
+                // Create table
+                try {
+                    const tableData = data.data.slice(0, 100);
+                    const table = createResultsTable(tableData);
+                    resultsContent.innerHTML = table;
+                    console.log("Results table updated successfully");
+                } catch (error) {
+                    console.error("Error updating results table:", error);
+                    resultsContent.innerHTML =
+                        '<div class="alert alert-error">Error displaying results table</div>';
+                }
+            }
+
+            function createResultsTable(data) {
+                if (data.length === 0)
+                    return '<div class="empty-state">No data to display</div>';
+
+                const headers = [
+                    "Grid ID",
+                    "Month",
+                    "Country",
+                    "Coordinates",
+                    "Risk Level",
+                    "Probability",
+                    "HDI 90%",
+                ];
+
+                let tableHTML = `
+                <table class="results-table">
+                    <thead>
+                        <tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr>
+                    </thead>
+                    <tbody>
+            `;
+
+                data.forEach((row) => {
+                    const lat = row.latitude ? row.latitude.toFixed(2) : "N/A";
+                    const lon = row.longitude
+                        ? row.longitude.toFixed(2)
+                        : "N/A";
+                    const mainMean = row.main_mean
+                        ? row.main_mean.toFixed(2)
+                        : "N/A";
+                    const mainDich = row.main_dich
+                        ? (row.main_dich * 100).toFixed(1) + "%"
+                        : "N/A";
+                    const hdi90 =
+                        row.hdi_90_lower && row.hdi_90_upper
+                            ? `${(row.hdi_90_lower * 100).toFixed(1)}% - ${(
+                                  row.hdi_90_upper * 100
+                              ).toFixed(1)}%`
+                            : "N/A";
+
+                    const riskLevel = getRiskLevel(row.main_mean || 0);
+
+                    tableHTML += `
+                    <tr>
+                        <td><strong>${row.grid_id}</strong></td>
+                        <td>${row.year}-${row.month
+                        .toString()
+                        .padStart(2, "0")}</td>
+                        <td>${row.country_name || "Unknown"}</td>
+                        <td><span class="coord-text">${lat}, ${lon}</span></td>
+                        <td><span class="risk-badge ${
+                            riskLevel.class
+                        }">${mainMean}</span></td>
+                        <td>${mainDich}</td>
+                        <td>${hdi90}</td>
+                    </tr>
+                `;
+                });
+
+                tableHTML += "</tbody></table>";
+
+                if (data.length < currentData.length) {
+                    tableHTML += `<div class="alert alert-warning"><i class="fas fa-info-circle"></i>Showing first ${data.length} of ${currentData.length} results</div>`;
+                }
+
+                return tableHTML;
+            }
+
+            function getRiskLevel(risk) {
+                if (risk > 50) return { class: "risk-high", label: "High" };
+                if (risk > 10) return { class: "risk-medium", label: "Medium" };
+                return { class: "risk-low", label: "Low" };
+            }
+
+            function initializeMap() {
+                map = L.map("map").setView([20, 0], 2);
+
+                L.tileLayer(
+                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    {
+                        attribution: "© OpenStreetMap contributors",
+                        maxZoom: 18,
+                    }
+                ).addTo(map);
+            }
+
+            function updateMap(data) {
+                console.log("updateMap called with data:", data);
+
+                if (!map) {
+                    console.error("Map not initialized");
+                    return;
+                }
+
+                try {
+                    // Clear existing markers
+                    map.eachLayer((layer) => {
+                        if (layer instanceof L.CircleMarker) {
+                            map.removeLayer(layer);
+                        }
+                    });
+
+                    if (!data || data.length === 0) {
+                        console.log("No data provided to map");
+                        return;
+                    }
+
+                    // Filter data with valid coordinates
+                    const validData = data.filter(
+                        (d) => d.latitude && d.longitude
+                    );
+                    console.log("Valid map data points:", validData.length);
+
+                    if (validData.length === 0) {
+                        showMapMessage(
+                            "No location data available for mapping"
+                        );
+                        return;
+                    }
+
+                    // Create markers
+                    validData.forEach((item) => {
+                        const risk = item.main_mean || item.main_dich || 0;
+                        const color = getMapColor(risk);
+                        const size = Math.max(4, Math.min(12, risk * 0.5 + 4));
+
+                        const marker = L.circleMarker(
+                            [item.latitude, item.longitude],
+                            {
+                                radius: size,
+                                fillColor: color,
+                                color: "white",
+                                weight: 2,
+                                opacity: 0.9,
+                                fillOpacity: 0.7,
+                            }
+                        ).addTo(map);
+
+                        marker.bindPopup(`
+                        <div style="min-width: 200px;">
+                            <h4 style="margin: 0 0 8px 0; color: #1e293b;">Grid ${
+                                item.grid_id
+                            }</h4>
+                            <div style="font-size: 14px; line-height: 1.5;">
+                                <strong>Country:</strong> ${
+                                    item.country_name || "Unknown"
+                                }<br>
+                                <strong>Period:</strong> ${
+                                    item.year
+                                }-${item.month.toString().padStart(2, "0")}<br>
+                                <strong>Risk Level:</strong> ${risk.toFixed(
+                                    2
+                                )}<br>
+                                <strong>Probability:</strong> ${
+                                    item.main_dich
+                                        ? (item.main_dich * 100).toFixed(1) +
+                                          "%"
+                                        : "N/A"
+                                }<br>
+                                <strong>Location:</strong> ${item.latitude.toFixed(
+                                    2
+                                )}, ${item.longitude.toFixed(2)}
+                            </div>
+                        </div>
+                    `);
+                    });
+
+                    // Fit map to markers
+                    if (validData.length > 0) {
+                        const group = new L.featureGroup(
+                            validData.map((item) =>
+                                L.circleMarker([item.latitude, item.longitude])
+                            )
+                        );
+                        map.fitBounds(group.getBounds().pad(0.1));
+                    }
+
+                    console.log(
+                        "Map updated successfully with",
+                        validData.length,
+                        "markers"
+                    );
+                } catch (error) {
+                    console.error("Error updating map:", error);
+                }
+            }
+
+            function getMapColor(risk) {
+                if (risk > 50) return "#dc2626";
+                if (risk > 20) return "#ea580c";
+                if (risk > 10) return "#d97706";
+                if (risk > 5) return "#ca8a04";
+                if (risk > 1) return "#65a30d";
+                return "#16a34a";
+            }
+
+            function showMapMessage(message) {
+                const mapContainer = document.getElementById("map");
+                const messageDiv = document.createElement("div");
+                messageDiv.className = "empty-state";
+                messageDiv.innerHTML = `
+                <div class="empty-icon"><i class="fas fa-map-marker-alt"></i></div>
+                <div class="empty-title">Map Unavailable</div>
+                <div class="empty-description">${message}</div>
+            `;
+                mapContainer.appendChild(messageDiv);
+            }
+
+            // Make initializeChart globally accessible for fallback
+            window.initializeChart = function initializeChart() {
+                if (typeof Chart === "undefined") {
+                    console.error("Chart.js not available for initialization");
+                    return;
+                }
+
+                const canvas = document.getElementById("forecastChart");
+                if (!canvas) {
+                    console.error("Canvas element not found");
+                    return;
+                }
+
+                try {
+                    const ctx = canvas.getContext("2d");
+                    chart = new Chart(ctx, {
+                        type: "line",
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    label: "Average Risk Level",
+                                    data: [],
+                                    borderColor: "#4f46e5",
+                                    backgroundColor: "rgba(79, 70, 229, 0.1)",
+                                    borderWidth: 2,
+                                    fill: true,
+                                    tension: 0.4,
+                                    pointBackgroundColor: "#4f46e5",
+                                    pointBorderColor: "white",
+                                    pointBorderWidth: 2,
+                                    pointRadius: 4,
+                                },
+                            ],
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                intersect: false,
+                                mode: "index",
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: "top",
+                                    labels: {
+                                        usePointStyle: true,
+                                        font: {
+                                            size: 12,
+                                            weight: "500",
+                                        },
+                                    },
+                                },
+                                tooltip: {
+                                    backgroundColor: "rgba(0, 0, 0, 0.8)",
+                                    titleColor: "white",
+                                    bodyColor: "white",
+                                    borderColor: "#4f46e5",
+                                    borderWidth: 1,
+                                    cornerRadius: 8,
+                                    displayColors: false,
+                                },
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: "Risk Level",
+                                        font: {
+                                            size: 12,
+                                            weight: "500",
+                                        },
+                                    },
+                                    grid: {
+                                        color: "rgba(0, 0, 0, 0.1)",
+                                    },
+                                },
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: "Time Period",
+                                        font: {
+                                            size: 12,
+                                            weight: "500",
+                                        },
+                                    },
+                                    grid: {
+                                        color: "rgba(0, 0, 0, 0.1)",
+                                    },
+                                },
+                            },
+                        },
+                    });
+                    console.log("Chart initialized successfully");
+                } catch (error) {
+                    console.error("Error initializing chart:", error);
+                }
+            };
+
+            function updateChart(data) {
+                console.log("updateChart called with data:", data);
+
+                if (!chart) {
+                    console.error("Chart not initialized");
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    chart.data.labels = [];
+                    chart.data.datasets[0].data = [];
+                    chart.update();
+                    console.log("Chart cleared due to no data");
+                    return;
+                }
+
+                try {
+                    // Group data by month and calculate averages
+                    const monthlyData = {};
+                    data.forEach((item) => {
+                        const monthKey = `${item.year}-${item.month
+                            .toString()
+                            .padStart(2, "0")}`;
+                        if (!monthlyData[monthKey]) {
+                            monthlyData[monthKey] = [];
+                        }
+                        monthlyData[monthKey].push(
+                            item.main_mean || item.main_dich || 0
+                        );
+                    });
+
+                    const labels = Object.keys(monthlyData).sort();
+                    const averages = labels.map((month) => {
+                        const values = monthlyData[month];
+                        return (
+                            values.reduce((sum, val) => sum + val, 0) /
+                            values.length
+                        );
+                    });
+
+                    chart.data.labels = labels;
+                    chart.data.datasets[0].data = averages;
+                    chart.update("none"); // Use 'none' for immediate update without animation
+                    console.log(
+                        "Chart updated successfully with",
+                        labels.length,
+                        "data points"
+                    );
+                } catch (error) {
+                    console.error("Error updating chart:", error);
+                }
+            }
+
+            function showError(message) {
+                const resultsContent =
+                    document.getElementById("resultsContent");
+                resultsContent.innerHTML = `<div class="alert alert-error"><i class="fas fa-exclamation-triangle"></i>${message}</div>`;
+                document.getElementById("resultsSection").style.display =
+                    "block";
+            }
+
+            // Manual test function for debugging
+            async function manualTest() {
+                console.log("=== MANUAL API TEST ===");
+
+                try {
+                    // Test info endpoint
+                    console.log("Testing /api/info...");
+                    const infoResponse = await fetch("/api/info");
+                    console.log("Info response status:", infoResponse.status);
+                    const infoData = await infoResponse.json();
+                    console.log("Info data:", infoData);
+
+                    // Test countries endpoint
+                    console.log("Testing /api/countries...");
+                    const countriesResponse = await fetch("/api/countries");
+                    console.log(
+                        "Countries response status:",
+                        countriesResponse.status
+                    );
+                    const countriesData = await countriesResponse.json();
+                    console.log("Countries data:", countriesData);
+
+                    // Manually populate dropdowns
+                    console.log("Manually populating dropdowns...");
+
+                    // Populate countries
+                    const countrySelect =
+                        document.getElementById("countrySelect");
+                    countrySelect.innerHTML =
+                        '<option value="">Select a country...</option>';
+                    countriesData.forEach((country) => {
+                        const option = document.createElement("option");
+                        option.value = country.country_id;
+                        option.textContent = `${country.country} (${
+                            country.grid_cells_count || 0
+                        } cells)`;
+                        countrySelect.appendChild(option);
+                    });
+
+                    // Populate months
+                    const months = infoData.available_months;
+                    loadMonths(months);
+
+                    alert("Manual test completed! Check console for details.");
+                } catch (error) {
+                    console.error("Manual test failed:", error);
+                    alert("Manual test failed: " + error.message);
+                }
+            }
+        </script>
+    </body>
+</html>

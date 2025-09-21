@@ -1,0 +1,29 @@
+# requirements.txt - Production dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pandas==2.0.0
+numpy==1.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-asyncio==0.21.1
+httpx==0.25.2
+
+# Linting and formatting
+ruff==0.1.6
+mypy==1.7.1
+types-requests==2.31.0.10
+
+# Development tools
+ipython==8.17.2
+jupyter==1.0.0
+
+# Documentation
+mkdocs==1.5.3
+mkdocs-material==9.4.8
+
+# Security
+pip-audit==2.6.1
